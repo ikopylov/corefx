@@ -1013,12 +1013,21 @@ namespace System.Linq
 
         public static Dictionary<TKey, TSource> ToDictionary<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector)
         {
-            return ToDictionary<TSource, TKey, TSource>(source, keySelector, IdentityFunction<TSource>.Instance, null);
+            return ToDictionary<TSource, TKey>(source, keySelector, null);
         }
 
         public static Dictionary<TKey, TSource> ToDictionary<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector, IEqualityComparer<TKey> comparer)
         {
-            return ToDictionary<TSource, TKey, TSource>(source, keySelector, IdentityFunction<TSource>.Instance, comparer);
+            if (source == null) throw Error.ArgumentNull("source");
+            if (keySelector == null) throw Error.ArgumentNull("keySelector");
+
+            int capacity = 0;
+            if (source is ICollection<TSource>) capacity = (source as ICollection<TSource>).Count;
+            else if (source is IReadOnlyCollection<TSource>) capacity = (source as IReadOnlyCollection<TSource>).Count;
+
+            Dictionary<TKey, TSource> d = new Dictionary<TKey, TSource>(capacity, comparer);
+            foreach (TSource element in source) d.Add(keySelector(element), element);
+            return d;
         }
 
         public static Dictionary<TKey, TElement> ToDictionary<TSource, TKey, TElement>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector)
@@ -1031,10 +1040,12 @@ namespace System.Linq
             if (source == null) throw Error.ArgumentNull("source");
             if (keySelector == null) throw Error.ArgumentNull("keySelector");
             if (elementSelector == null) throw Error.ArgumentNull("elementSelector");
-            Dictionary<TKey, TElement> d = null;
-            if (source is ICollection<TSource>) d = new Dictionary<TKey, TElement>((source as ICollection<TSource>).Count, comparer);
-            else if (source is IReadOnlyCollection<TSource>) d = new Dictionary<TKey, TElement>((source as IReadOnlyCollection<TSource>).Count, comparer);
-            else d = new Dictionary<TKey, TElement>(comparer);
+
+            int capacity = 0;
+            if (source is ICollection<TSource>) capacity = (source as ICollection<TSource>).Count;
+            else if (source is IReadOnlyCollection<TSource>) capacity = (source as IReadOnlyCollection<TSource>).Count;
+
+            Dictionary<TKey, TElement> d = new Dictionary<TKey, TElement>(capacity, comparer);
             foreach (TSource element in source) d.Add(keySelector(element), elementSelector(element));
             return d;
         }
