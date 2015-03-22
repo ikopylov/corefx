@@ -48,7 +48,7 @@ namespace System.Linq.Tests
             int[] sourceArray = new int[] { 1, 2, 3, 4, 5 };
             int[] resultArray = sourceArray.ToArray();
 
-            Assert.False(object.ReferenceEquals(sourceArray, resultArray));
+            Assert.NotSame(sourceArray, resultArray);
             Assert.Equal(sourceArray, resultArray);
         }
 
@@ -107,7 +107,7 @@ namespace System.Linq.Tests
             Dictionary<int, int> source = new Dictionary<int, int>() { { 1, 1 }, { 2, 2 }, { 3, 3 } };
             Dictionary<int, int> result = source.ToDictionary(key => key.Key, val => val.Value);
 
-            Assert.False(object.ReferenceEquals(source, result));
+            Assert.NotSame(source, result);
             Assert.Equal(source, result);
         }
 
@@ -120,6 +120,8 @@ namespace System.Linq.Tests
             Dictionary<int, int> result = collection.ToDictionary(key => key);
 
             Assert.Equal(collection.Items.Count, result.Count);
+            Assert.Equal(collection.Items, result.Keys);
+            Assert.Equal(collection.Items, result.Values);
         }
 
         [Fact]
@@ -155,22 +157,22 @@ namespace System.Linq.Tests
             CollectionTest<int> collection = new CollectionTest<int>();
             collection.Items.AddRange(new int[] { 1, 2, 3, 4, 5, 6 });
 
-            Dictionary<int, int> result = collection.ToDictionary(key => key, comparer);
+            Dictionary<int, int> result1 = collection.ToDictionary(key => key, comparer);
+            Assert.Same(comparer, result1.Comparer);
 
-            Assert.Same(comparer, result.Comparer);
+            Dictionary<int, int> result2 = collection.ToDictionary(key => key, val => val, comparer);
+            Assert.Same(comparer, result2.Comparer);
         }
 
         [Fact]
-        public void ToDictionary_ValueSelectorWorks()
+        public void ToDictionary_KeyValueSelectorsWork()
         {
-            CustomComparer<int> comparer = new CustomComparer<int>();
-
             CollectionTest<int> collection = new CollectionTest<int>();
             collection.Items.AddRange(new int[] { 1, 2, 3, 4, 5, 6 });
 
-            Dictionary<int, int> result = collection.ToDictionary(key => key, val => val + 100, comparer);
+            Dictionary<int, int> result = collection.ToDictionary(key => key + 10, val => val + 100);
 
-            Assert.Equal(collection.Items, result.Keys);
+            Assert.Equal(collection.Items.Select(o => o + 10), result.Keys);
             Assert.Equal(collection.Items.Select(o => o + 100), result.Values);
         }
     }
