@@ -1031,7 +1031,10 @@ namespace System.Linq
             if (source == null) throw Error.ArgumentNull("source");
             if (keySelector == null) throw Error.ArgumentNull("keySelector");
             if (elementSelector == null) throw Error.ArgumentNull("elementSelector");
-            Dictionary<TKey, TElement> d = new Dictionary<TKey, TElement>(comparer);
+            Dictionary<TKey, TElement> d = null;
+            if (source is ICollection<TSource>) d = new Dictionary<TKey, TElement>((source as ICollection<TSource>).Count, comparer);
+            else if (source is IReadOnlyCollection<TSource>) d = new Dictionary<TKey, TElement>((source as IReadOnlyCollection<TSource>).Count, comparer);
+            else d = new Dictionary<TKey, TElement>(comparer);
             foreach (TSource element in source) d.Add(keySelector(element), elementSelector(element));
             return d;
         }
@@ -3095,6 +3098,10 @@ namespace System.Linq
             }
             else
             {
+                IReadOnlyCollection<TElement> readOnlyCollection = source as IReadOnlyCollection<TElement>;
+                if (readOnlyCollection != null)
+                    items = new TElement[readOnlyCollection.Count];
+
                 foreach (TElement item in source)
                 {
                     if (items == null)
