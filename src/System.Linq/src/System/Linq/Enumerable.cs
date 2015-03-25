@@ -3109,10 +3109,6 @@ namespace System.Linq
             }
             else
             {
-                IReadOnlyCollection<TElement> readOnlyCollection = source as IReadOnlyCollection<TElement>;
-                if (readOnlyCollection != null)
-                    items = new TElement[readOnlyCollection.Count];
-
                 foreach (TElement item in source)
                 {
                     if (items == null)
@@ -3121,7 +3117,18 @@ namespace System.Linq
                     }
                     else if (items.Length == count)
                     {
-                        TElement[] newItems = ArrayT<TElement>.Resize(items, checked(count * 2), count);
+                        int nextSize = checked(count * 2);
+
+                        if (count == 128)
+                        {
+                            // Because the type casting is slow we should do it only for large collections.
+                            // Reasonable size of the collection for this tweak was chosen by tests and is equal to 128 (which is '4 << 5')
+                            IReadOnlyCollection<TElement> readOnlyCollection = source as IReadOnlyCollection<TElement>;
+                            if (readOnlyCollection != null && readOnlyCollection.Count > count)
+                                nextSize = readOnlyCollection.Count;
+                        }
+
+                        TElement[] newItems = ArrayT<TElement>.Resize(items, nextSize, count);
                         items = newItems;
                     }
                     items[count] = item;
