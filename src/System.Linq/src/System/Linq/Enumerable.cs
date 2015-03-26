@@ -1022,8 +1022,9 @@ namespace System.Linq
             if (keySelector == null) throw Error.ArgumentNull("keySelector");
 
             int capacity = 0;
-            if (source is ICollection<TSource>) capacity = (source as ICollection<TSource>).Count;
-            else if (source is IReadOnlyCollection<TSource>) capacity = (source as IReadOnlyCollection<TSource>).Count;
+
+            if (source is TSource[]) capacity = (source as TSource[]).Length; // Cast to Array is much faster than cast to ICollection
+            else if (source is ICollection<TSource>) capacity = (source as ICollection<TSource>).Count;
 
             Dictionary<TKey, TSource> d = new Dictionary<TKey, TSource>(capacity, comparer);
             foreach (TSource element in source) d.Add(keySelector(element), element);
@@ -1042,8 +1043,9 @@ namespace System.Linq
             if (elementSelector == null) throw Error.ArgumentNull("elementSelector");
 
             int capacity = 0;
-            if (source is ICollection<TSource>) capacity = (source as ICollection<TSource>).Count;
-            else if (source is IReadOnlyCollection<TSource>) capacity = (source as IReadOnlyCollection<TSource>).Count;
+
+            if (source is TSource[]) capacity = (source as TSource[]).Length; // Cast to Array is much faster than cast to ICollection
+            else if (source is ICollection<TSource>) capacity = (source as ICollection<TSource>).Count;
 
             Dictionary<TKey, TElement> d = new Dictionary<TKey, TElement>(capacity, comparer);
             foreach (TSource element in source) d.Add(keySelector(element), elementSelector(element));
@@ -3097,42 +3099,59 @@ namespace System.Linq
         {
             TElement[] items = null;
             int count = 0;
-            ICollection<TElement> collection = source as ICollection<TElement>;
-            if (collection != null)
+
+            // Cast to Array is extremely fast and
+            // it helps to slightly improve performance when 'source' is TElement[]
+            TElement[] array = source as TElement[];
+            if (array != null)
             {
-                count = collection.Count;
+                count = array.Length;
                 if (count > 0)
                 {
                     items = new TElement[count];
-                    collection.CopyTo(items, 0);
+                    Array.Copy(array, items, count);
                 }
             }
             else
             {
-                foreach (TElement item in source)
+                ICollection<TElement> collection = source as ICollection<TElement>;
+                if (collection != null)
                 {
-                    if (items == null)
+                    count = collection.Count;
+                    if (count > 0)
                     {
-                        items = new TElement[4];
+                        items = new TElement[count];
+                        collection.CopyTo(items, 0);
                     }
-                    else if (items.Length == count)
+                }
+                else
+                {
+                    foreach (TElement item in source)
                     {
-                        int nextSize = checked(count * 2);
-
-                        if (count == 128)
+                        if (items == null)
                         {
-                            // Because the type casting is slow we should do it only for large collections.
-                            // Reasonable size of the collection for this tweak was chosen by tests and is equal to 128 (which is '4 << 5')
-                            IReadOnlyCollection<TElement> readOnlyCollection = source as IReadOnlyCollection<TElement>;
-                            if (readOnlyCollection != null && readOnlyCollection.Count > count)
-                                nextSize = readOnlyCollection.Count;
+                            items = new TElement[4];
                         }
+                        else if (items.Length == count)
+                        {
+                            int nextSize = checked(count * 2);
 
-                        TElement[] newItems = ArrayT<TElement>.Resize(items, nextSize, count);
-                        items = newItems;
+                            if (count == 128)
+                            {
+                                // Casting to IReadOnlyCollection<T> is very slow due to covariant type parameter,
+                                // so we should do it only for large collections.
+                                // Reasonable size of the collection for this tweak was chosen by tests and is equal to 128.
+                                IReadOnlyCollection<TElement> readOnlyCollection = source as IReadOnlyCollection<TElement>;
+                                if (readOnlyCollection != null && readOnlyCollection.Count > count)
+                                    nextSize = readOnlyCollection.Count;
+                            }
+
+                            TElement[] newItems = ArrayT<TElement>.Resize(items, nextSize, count);
+                            items = newItems;
+                        }
+                        items[count] = item;
+                        count++;
                     }
-                    items[count] = item;
-                    count++;
                 }
             }
             this.items = items;
