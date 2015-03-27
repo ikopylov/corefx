@@ -75,10 +75,23 @@ namespace System.Linq.Tests
         }
 
         [Fact]
-        public void ToArray_WorkWithIReadOnlyCollection()
+        public void ToArray_NotCastToIReadOnlyCollectionWhenLengthIsSmall()
         {
             ReadOnlyCollectionTest<int> collection = new ReadOnlyCollectionTest<int>();
             collection.Items.AddRange(new int[] { 1, 2, 3, 4, 5, 6 });
+
+            int[] resultArray = collection.ToArray();
+
+            Assert.Equal(collection.Items, resultArray);
+            Assert.True(collection.CountTouched == 0);
+        }
+
+        [Fact]
+        public void ToArray_WorkWithIReadOnlyCollectionWhenLengthIsLarge()
+        {
+            ReadOnlyCollectionTest<int> collection = new ReadOnlyCollectionTest<int>();
+            for (int i = 0; i < 500; i++)
+                collection.Items.Add(i);
 
             int[] resultArray = collection.ToArray();
 
@@ -124,17 +137,6 @@ namespace System.Linq.Tests
             Assert.Equal(collection.Items, result.Values);
         }
 
-        [Fact]
-        public void ToDictionary_UseCountFromIReadOnlyCollectionToInitCapacity()
-        {
-            ReadOnlyCollectionTest<int> collection = new ReadOnlyCollectionTest<int>();
-            collection.Items.AddRange(new int[] { 1, 2, 3, 4, 5, 6 });
-
-            Dictionary<int, int> result = collection.ToDictionary(key => key);
-
-            Assert.Equal(collection.Items.Count, result.Count);
-            Assert.True(collection.CountTouched > 0);
-        }
 
         [Fact]
         public void ToDictionary_UseCountFromICollectionToInitCapacity()

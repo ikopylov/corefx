@@ -3099,59 +3099,43 @@ namespace System.Linq
         {
             TElement[] items = null;
             int count = 0;
-
-            // Cast to Array is extremely fast and
-            // it helps to slightly improve performance when 'source' is TElement[]
-            TElement[] array = source as TElement[];
-            if (array != null)
+            ICollection<TElement> collection = source as ICollection<TElement>;
+            if (collection != null)
             {
-                count = array.Length;
+                count = collection.Count;
                 if (count > 0)
                 {
                     items = new TElement[count];
-                    Array.Copy(array, items, count);
+                    collection.CopyTo(items, 0);
                 }
             }
             else
             {
-                ICollection<TElement> collection = source as ICollection<TElement>;
-                if (collection != null)
+                foreach (TElement item in source)
                 {
-                    count = collection.Count;
-                    if (count > 0)
+                    if (items == null)
                     {
-                        items = new TElement[count];
-                        collection.CopyTo(items, 0);
+                        items = new TElement[4];
                     }
-                }
-                else
-                {
-                    foreach (TElement item in source)
+                    else if (items.Length == count)
                     {
-                        if (items == null)
-                        {
-                            items = new TElement[4];
-                        }
-                        else if (items.Length == count)
-                        {
-                            int nextSize = checked(count * 2);
+                        int nextSize = checked(count * 2);
 
-                            if (count == 128)
-                            {
-                                // Casting to IReadOnlyCollection<T> is very slow due to covariant type parameter,
-                                // so we should do it only for large collections.
-                                // Reasonable size of the collection for this tweak was chosen by tests and is equal to 128.
-                                IReadOnlyCollection<TElement> readOnlyCollection = source as IReadOnlyCollection<TElement>;
-                                if (readOnlyCollection != null && readOnlyCollection.Count > count)
-                                    nextSize = readOnlyCollection.Count;
-                            }
-
-                            TElement[] newItems = ArrayT<TElement>.Resize(items, nextSize, count);
-                            items = newItems;
+                        if (count == 128)
+                        {
+                            // Casting to IReadOnlyCollection<T> is very slow due to covariant type parameter,
+                            // so we should do it only for large collections.
+                            // Reasonable size of the collection for this tweak was chosen by tests and is equal to 128.
+                            IReadOnlyCollection<TElement> readOnlyCollection = source as IReadOnlyCollection<TElement>;
+                            if (readOnlyCollection != null && readOnlyCollection.Count > count)
+                                nextSize = readOnlyCollection.Count;
                         }
-                        items[count] = item;
-                        count++;
+
+                        TElement[] newItems = ArrayT<TElement>.Resize(items, nextSize, count);
+                        items = newItems;
                     }
+                    items[count] = item;
+                    count++;
                 }
             }
             this.items = items;
