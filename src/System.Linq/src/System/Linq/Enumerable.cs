@@ -3127,8 +3127,12 @@ namespace System.Linq
                             // so we should do it only for large collections.
                             // Reasonable size of the collection for this tweak was chosen by tests and is equal to 128.
                             IReadOnlyCollection<TElement> readOnlyCollection = source as IReadOnlyCollection<TElement>;
-                            if (readOnlyCollection != null && readOnlyCollection.Count > count)
-                                nextSize = readOnlyCollection.Count;
+                            if (readOnlyCollection != null)
+                            {
+                                int readOnlyCollectionCount = readOnlyCollection.Count; // Reading 'Count' only once as it can be slow.
+                                if (readOnlyCollectionCount > count)
+                                    nextSize = readOnlyCollectionCount;
+                            }
                         }
 
                         TElement[] newItems = ArrayT<TElement>.Resize(items, nextSize, count);
